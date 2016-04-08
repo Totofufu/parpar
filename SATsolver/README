@@ -1,0 +1,31 @@
+Specify input as follows:
+
+var_num,clause_num
+clause1
+clause2
+...
+
+As an example, consider this:
+2,3
+0,1
+!0
+!1
+
+This is "(0 or 1) and (not 0) and (not 1)".
+
+Please do not include multiple of the same variable in a clause, as that's
+just degenerate and I didn't deal with the case explicitly.
+Variables should be integers, starting from 0.
+
+To run an example, first run the "make" command.
+Run the solver with:
+./sat input_file FLAGS
+
+Allowable flags are:
+-h (help)
+-v (verbose)
+-s# (split heuristic #)
+
+The current implemented heuristics are:
+s0: Pick arbitrary variable
+s1: Pick variable which satisfies most clauses/occurs most often
