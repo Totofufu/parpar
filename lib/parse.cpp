@@ -33,7 +33,7 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
 
       // Insert each variable into the subexpression.
       sub_expr.insert(sub_it, new_var);
-      std::cout << new_var << "\n";
+      //std::cout << new_var << "\n";
       sub_it = sub_expr.begin();
 
       full_sub.erase(0, pos + delimiter.length());
@@ -42,7 +42,7 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
     token = full_sub.substr(0, pos);
     int last_arg = atoi(token.c_str());
     sub_expr.insert(sub_it, last_arg);
-    std::cout << token << "\n";
+    //std::cout << token << "\n";
     if (abs(last_arg) > max_var[0]) {
       *max_var = abs(last_arg);
     }
@@ -56,9 +56,9 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
 }
 
 // input form of SAT expression: 0,2 | -2,3,-4
-int main(int argc, char** argv) {
+/*int main(int argc, char** argv) {
   int *foo = new int;
   std::vector< std::vector <int> > exp = parse(argc, argv, foo);
   std::cout << *foo << "\n";
   return 0;
-}
+}*/
