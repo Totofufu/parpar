@@ -1,5 +1,7 @@
+CC=g++
+
 default:
-	g++ -o sat sat.cpp
+	$(CC) -o sat sat.cpp
 
 clean:
 	rm -rf sat
