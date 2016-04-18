@@ -9,6 +9,7 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
   std::vector< std::vector<int> > full_expr;
   std::vector< std::vector<int> >::iterator full_it;
   full_it = full_expr.begin();
+  max_var[0] = 0;
 
   // Iterate through cmd line arguments.
   for (int i = 1; i < argc; i++) {
@@ -26,6 +27,9 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
     while ((pos = full_sub.find(delimiter)) != std::string::npos) {
       token = full_sub.substr(0, pos);
       int new_var = atoi(token.c_str());
+      if (abs(new_var) > max_var[0]) {
+        max_var[0] = abs(new_var);
+      }
 
       // Insert each variable into the subexpression.
       sub_expr.insert(sub_it, new_var);
@@ -34,9 +38,14 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
 
       full_sub.erase(0, pos + delimiter.length());
     }
+    // Don't forget the last argument
     token = full_sub.substr(0, pos);
-    sub_expr.insert(sub_it, atoi(token.c_str()));
+    int last_arg = atoi(token.c_str());
+    sub_expr.insert(sub_it, last_arg);
     std::cout << token << "\n";
+    if (abs(last_arg) > max_var[0]) {
+      max_var[0] = abs(last_arg);
+    }
 
     // Reset full expression iterator.
     full_expr.insert(full_it, sub_expr);
@@ -50,6 +59,6 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
 int main(int argc, char** argv) {
   int foo[1] = {};
   std::vector< std::vector <int> > exp = parse(argc, argv, foo);
-  //std::cout << foo[0] << "\n";
+  std::cout << foo[0] << "\n";
   return 0;
 }
