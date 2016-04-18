@@ -3,6 +3,9 @@
 #include <iostream>
 #include <vector>
 
+#ifndef PARSELIB_H
+#define PARSELIB_H
+
 // Input: 1,2,3 4,-5 -6,7
 // Output: [[1,2,3],[4,-5],[-6,7]]
 std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
@@ -62,3 +65,5 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
   std::cout << *foo << "\n";
   return 0;
 }*/
+
+#endif
