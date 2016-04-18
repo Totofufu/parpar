@@ -16,10 +16,13 @@ void print_solution(std::vector<int> sat_vals) {
     printf("\n");
   }*/
 
+  int i = 1;
   for (std::vector<int>::iterator it = sat_vals.begin(); it != sat_vals.end(); ++it) {
     int exp = *it;
-    if (exp == 1) printf("T,");
-    else printf("F,");
+    printf("x%d = ", i);
+    i++;
+    if (exp == 1) printf("T, ");
+    else printf("F, ");
   }
   printf("\n");
 }
