@@ -3,26 +3,21 @@
 #include <math.h>
 #include <cassert>
 #include <vector>
+#include <string.h>
 
 #include "lib/parse.cpp"
 
 void print_solution(std::vector<int> sat_vals) {
-  /*for (std::vector<std::vector<int> >::iterator outer = sat_vals.begin(); outer != sat_vals.end(); ++outer) {
-    for (std::vector<int>::iterator inner = *outer.begin(); inner != *outer.end(); ++inner) {
-      int exp = *inner;
-      if (exp == 1) printf("T,");
-      else printf("F,");
-    }
-    printf("\n");
-  }*/
-
   int i = 1;
   for (std::vector<int>::iterator it = sat_vals.begin(); it != sat_vals.end(); ++it) {
     int exp = *it;
     printf("x%d = ", i);
+    if (exp == 1) printf("T");
+    else printf("F");
+
+    // deal with trailing comma at the very end
+    if (i < sat_vals.size()) printf(", ");
     i++;
-    if (exp == 1) printf("T, ");
-    else printf("F, ");
   }
   printf("\n");
 }
@@ -41,7 +36,7 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
         clause |= !exp_value; // account for literals that are negations of a variable
     }
     satis &= clause;
-    //if (!satis) return false;
+    if (!satis) return false;
   }
   return satis;
 }
