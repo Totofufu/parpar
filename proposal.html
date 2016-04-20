@@ -2,7 +2,7 @@
 <html lang="en-us">
   <head>
     <meta charset="UTF-8">
-    <title>ParStrokes by Totofufu</title>
+    <title>ParSAT by Totofufu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
@@ -11,10 +11,11 @@
   </head>
   <body>
     <section class="page-header">
-      <h1 class="project-name">ParStrokes</h1>
+      <h1 class="project-name">ParSAT</h1>
       <h2 class="project-tagline">15-418 Final Project</h2>
       <a href="index.html" class="btn">HomePage</a> 
       <a href="proposal.html" class="btn">Project Proposal</a> 
+      <a href="checkpoint.html" class="btn">Checkpoint</a>
       <a href="https://github.com/Totofufu/parstrokes" class="btn">View on GitHub</a>
     </section>
 
@@ -25,53 +26,49 @@
 
 <h2>Title</h2>
 
-<p>ParStrokes<br>
+<p>ParSAT<br>
 By Eileen Jiang (yuanj) and Ashley Lai (ahlai)</p>
 
 <h2>Summary</h2>
 
-<p>We are going to optimize the process of transforming a photo into a painting by parallelizing the Hertzmann algorithm for rendering in artistic styles.</p> 
+<p>We are going to write a parallel SAT solver that is compatible with any number of variables and clause size. We will be working on the latedays cluster to utilize the performance power of the Intel Xeon Phi. </p> 
 
 <h2>Background</h2>
 
-<p>The application is an interface where users can upload a photo, and the application will pre-process the image using the Hertzmann algorithm to generate a painted depiction of the photo. At a high level, the algorithm renders the image based off of the larger to smaller strokes sizes (which fills up the painting from the background colors to the thinner, more specialized strokes. The computations involved to create these strokes can be intensive and would greatly benefit from parallelism.</p>
-
-<p>The pseudocode for the Hertzmann algorithm is as follows:</p>
-
-<img src="pics/hertzmannalgo1.png"><br><br>
-<img src="pics/hertzmannalgo2.png"><br>
-
-<p>Because the image is sectioned off into grids for pre-processing, this algorithm might benefit from parallelism by running through the sections of each grid with multiple threads, The helper function PAINTSTROKE is then run on each grid, and the higher number of dependencies in this helper function make parallelizing PAINTSTROKE more difficult, which is why we’ll have to find a way to improve the speedup for this part.</p>
-
+<p>Our project involves working with the Intel Xeon Phi’s in order to speed up our computations. The main work comes from brute forcing all the possible solutions. The actual operations done on the elements are bitwise operators and thus shouldn’t take much computational time, but I believe that the main factor limiting good performance will be the sheer number of possibilities that we have to brute-force. As a result, the part of the solution that would benefit most from parallelism would be testing multiple possible solutions at once and “reducing” all the final results to determine whether the input expression is ultimately satisfiable or not. 
+</p>
 
 <h2>The Challenge</h2>
 
-<p>The problem of parallelizing this algorithm lies in the dependencies of the different steps. Similar to the CUDA assignment, the order that we paint the strokes on top of a particular pixel will matter, and we’ll have to modify the original Hertzmann algorithm to account for this dependency and see how we can minimize the critical sections as much as we can.</p>
+<p>The main challenge of writing a parallel SAT solver is figuring out the optimal way to brute-force as many possibilities as possible. Because the SAT problem is in NP, determining whether an expression is satisfiable takes an extremely long time to solve, depending on the size of the input. The part of the SAT solver that may be difficult to parallelize is communication across the different threads that run through the possible solutions to the SAT expression. Certain threads will return different answers to the satisfiability question, and so part of the challenge involves synchronizing the different results to output our desired final response.</p> 
+
+<p>In addition to implementing proper synchronization, there are also specific dependencies in the algorithm that we must account for. Earlier, we explored the idea of having each thread go through a possible solution and checking if that solution is satisfiable. Another idea would be to have multiple threads checking one possible solution, which could benefit especially if the SAT expression contains hundreds of thousands or millions of clauses. Part of the algorithm involves assigning boolean values to try out in a possible solution, so one dependency would be having to make sure to take care of this assignment first before seeing if it is actually satisfiable. Another possibility we could explore is which threads should take care of checking certain parts of the SAT expression to determine if that particular section is satisfiable or not. We would additionally need to make sure we synchronize correctly and efficiently when combining these results to determine if the possible SAT solution is actually satisfiable or not.</p>
 
 <h2>Resources</h2>
 
-<p>Our project is based off of a 15-112 term project from Spring 2014. The creator of the original term project sent us his code (written entirely in Python), so we will be referencing his implementation and translating it into CUDA. The algorithm he used to process the images can be found in Algorithms for Rendering in Artistic Styles by Aaron Hertzmann (https://www.cs.nyu.edu/media/publications/hertzmann_aaron.pdf). Because we’ll be working in CUDA, we’ll need access to NVIDIA GPUs, which we can find off of the specific ghc machines mentioned in the CUDA assignment.</p>
+<p>We have basic understanding of how a sequential SAT solver would work, and we’re planning to read up on different ways to optimize so that our algorithm doesn’t necessarily need to attempt every single brute force solution. We plan to discuss different ways to parallelize our starting sequential algorithm and look up different ideas online if all else fails. We’ll be starting from scratch on the latedays computers.</p>
 
 <h2>Goals and Deliverables</h2>
 
-<p>We would like to achieve a pre-processing rate of ~10 secs for the algorithm we will be using. The sequential version in Python takes approximately several minutes, and while writing the algorithm in C++ will speed it up due to the language choice, we’d like to optimize it even further by parallelizing the algorithm using the various tools we’ve been introduced to in this class.</p>
+<p><b>Plan to Achieve:</b> We plan to achieve a parallelized version of the SAT solver that can determine satisfiability for a given SAT expression with single threads attempting individual solutions or multiple threads attempting single solutions. We would like to obtain something close to 10x speedup from the initial sequential version.</p>
 
-<p>If we get ahead of schedule, then beyond trying to speed up our code even more, we could extend it to different kinds of files. For example, we could also process GIF files so that every frame of the GIF becomes a painting, and we generate a new GIF that runs through the paintings instead of the original photos. If we get to this stage, we could run all the different frames at once instead of having to wait for each frame to go through the algorithm.</p>
+<p><b>Hope to Achieve:</b> If all goes well, we hope to achieve parallelism across multiple cores so that we can speedup our initial sequential version even more than 10x.</p> 
 
-<p>If we were to show a demo at the parallelism competition, we’d likely be able to do a live-demo of our project by having a random student select an image off the internet, and then we could run our algorithm (which would hopefully finish in a few seconds) to display the outputted painting version of the image. We could also display a graph of the speedups we achieved, starting from the sequential version, all the way to our final, parallelized version.</p>
+<p>Our demo would likely be primarily focused around a live demo on a million-clause SAT expression (if our solver gets fast enough), as well as graphs demonstrating our speedups as we added in features that slowly improved our performance.</p> 
+
 
 <h2>Platform Choice</h2>
 
-We are going to be using C++. We feel that C++ is the best option due to the ease of making programs multi-threaded and the wide availability of libraries that C++ offers. 
+We will be implementing the parallel SAT solver with Intel Xeon Phi’s to take advantage of the large number of cores and to explore the OMP library. We will be using the latedays cluster to access the Xeon Phi’s that we also used for the ParaGraph assignment. 
 
 <h2>Schedule</h2> 
 
-Friday, April 1 - Finalize project proposal, review existing code<br>
-Friday, April 8 - Finish sequential version of project in C++<br>
-Friday, April 15 (CHECKPOINT) - Achieve pre-processing performance of 1 minute<br>
-Friday, April 22 - Achieve pre-processing performance of 30 secs<br>
-Friday, April 29 - Achieve pre-processing performance of around 10 secs, possibly extend project<br>
-Friday, May 6 - Prepare presentation<br>
+<b>Tuesday, April 5</b> - Revise project proposal<br>
+<b>Sunday, April 10</b> - Implement sequential version<br>
+<b>Friday, April 15 (CHECKPOINT)</b> - Achieve parallelism by checking individual solutions with single threads<br>
+<b>Friday, April 22</b> - Achieve parallelism by using multiple threads to check a single solution<br>
+<b>Friday, April 29</b> - If time allows, attempt several of our reach goals (for example, implement our algorithm on multiple cores)<br> 
+<b>Friday, May 6</b> - Prepare presentation<br>
 
 
 
