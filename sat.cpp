@@ -4,8 +4,12 @@
 #include <cassert>
 #include <vector>
 #include <string.h>
+#include <pthread.h>
 
 #include "lib/parse.cpp"
+#include "sat.h"
+
+#define NUM_THREADS 60
 
 void print_solution(std::vector<int> sat_vals) {
   int i = 1;
@@ -41,24 +45,62 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
   return satis;
 }
 
+void* attempt_single_solution(void* args) {
+  if (args == NULL) {
+    printf("args is NULL\n");
+    assert(false);
+  }
+  sob_t s = (sob_t)args;
+  int rep_temp = s->rep_temp;
+  std::vector <std::vector<int> > expr = s->expr;
+
+  std::vector<int> sat_vals;
+
+  // fill in the SAT expr with a brute force attempt
+  for (int i = 0; i < num_vars; i++) {
+    int bit = rep_temp & 0x1;
+    sat_vals.push_back(bit);
+    rep_temp >>= 1;
+  }
+
+  // check to see if the current SAT expression is satisfiable
+  if (is_satisfiable(expr, sat_vals)) {
+    printf("Solution found!\n");
+    print_solution(sat_vals);
+    delete num_vars_ptr;
+  }
+
+  return NULL;
+
+}
+
 // input form of SAT expression: 2,1 -2,3,-4
 int main(int argc, char** argv) {
   int* num_vars_ptr = new int;
   std::vector <std::vector<int> > expr = parse(argc, argv, num_vars_ptr); // assume this is initialized
   int num_vars = *num_vars_ptr;
 
-  // contains current clause true/false values
-  std::vector<int> sat_vals;
-  for (int i = 0; i < num_vars; i++) {
-    sat_vals.push_back(-1);
+  // contains values from 0 to 2^num_vars that represent all possible solutions
+  std::vector<int> rep_nums;
+  for (int i = 0; i < pow(2, num_vars); i++) {
+    rep_nums.push_back(i);
   }
 
-  for (int rep_num = 0; rep_num < pow(2, num_vars); rep_num++) {
-    int rep_temp = rep_num;
+  pthread_t threads[NUM_THREADS];
+  for (int t = 0; t < NUM_THREADS; t++) {
+    sob_t baby = new sob;
+    baby->expr = expr;
+    baby->rep_temp = rep_temp;
+    pthread_create(&threads[t], NULL, worker_single_request, (void*)baby);
+  }
+
+  /*for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
+    std::vector<int> sat_vals;
+
     // fill in the SAT expr with a brute force attempt
     for (int i = 0; i < num_vars; i++) {
       int bit = rep_temp & 0x1;
-      sat_vals.at(i) = bit;
+      sat_vals.push_back(bit);
       rep_temp >>= 1;
     }
 
@@ -69,7 +111,7 @@ int main(int argc, char** argv) {
       delete num_vars_ptr;
       return 0;
     }
-  }
+  }*/
 
   printf("No solution found.\n");
   delete num_vars_ptr;

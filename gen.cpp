@@ -38,7 +38,7 @@ std::string gen_sat(int num_vars, int num_clauses, int max_clause_len) {
 
 // input form of SAT expression: 2,1 -2,3,-4
 int main(int argc, char** argv) {
-  std::string result = gen_sat(100, 10, 5);
+  std::string result = gen_sat(15, 10000, 5);
   std::cout << result << "\n";
   return 1;
 }
