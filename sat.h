@@ -1,12 +1,12 @@
 #ifndef SAT_H
 #define SAT_H
 
-struct sob {
+struct poss_soln {
   std::vector <std::vector<int> > expr;
   int rep_temp;
 };
-typedef struct sob sob;
-typedef struct sob* sob_t;
+typedef struct poss_soln poss_soln;
+typedef struct poss_soln* poss_soln_t;
 
 
 #endif

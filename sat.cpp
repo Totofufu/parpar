@@ -50,7 +50,7 @@ void* attempt_single_solution(void* args) {
     printf("args is NULL\n");
     assert(false);
   }
-  sob_t s = (sob_t)args;
+  poss_soln_t s = (poss_soln_t)args;
   int rep_temp = s->rep_temp;
   std::vector <std::vector<int> > expr = s->expr;
 
@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
 
   pthread_t threads[NUM_THREADS];
   for (int t = 0; t < NUM_THREADS; t++) {
-    sob_t baby = new sob;
-    baby->expr = expr;
-    baby->rep_temp = rep_temp;
-    pthread_create(&threads[t], NULL, worker_single_request, (void*)baby);
+    poss_soln_t ps = new poss_soln;
+    ps->expr = expr;
+    ps->rep_temp = rep_temp;
+    pthread_create(&threads[t], NULL, worker_single_request, (void*)ps);
   }
 
   /*for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
