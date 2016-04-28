@@ -46,28 +46,31 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
 }
 
 void* attempt_single_solution(void* args) {
-  if (args == NULL) {
-    printf("args is NULL\n");
-    assert(false);
-  }
-  poss_soln_t s = (poss_soln_t)args;
-  int rep_temp = s->rep_temp;
-  std::vector <std::vector<int> > expr = s->expr;
 
-  std::vector<int> sat_vals;
+  while (!done) {
+    if (args == NULL) {
+      printf("args is NULL\n");
+      assert(false);
+    }
+    poss_soln_t s = (poss_soln_t)args;
+    int rep_temp = s->rep_temp;
+    std::vector <std::vector<int> > expr = s->expr;
 
-  // fill in the SAT expr with a brute force attempt
-  for (int i = 0; i < num_vars; i++) {
-    int bit = rep_temp & 0x1;
-    sat_vals.push_back(bit);
-    rep_temp >>= 1;
-  }
+    std::vector<int> sat_vals;
 
-  // check to see if the current SAT expression is satisfiable
-  if (is_satisfiable(expr, sat_vals)) {
-    printf("Solution found!\n");
-    print_solution(sat_vals);
-    delete num_vars_ptr;
+    // fill in the SAT expr with a brute force attempt
+    for (int i = 0; i < num_vars; i++) {
+      int bit = rep_temp & 0x1;
+      sat_vals.push_back(bit);
+      rep_temp >>= 1;
+    }
+
+    // check to see if the current SAT expression is satisfiable
+    if (is_satisfiable(expr, sat_vals)) {
+      printf("Solution found!\n");
+      print_solution(sat_vals);
+      delete num_vars_ptr;
+    }
   }
 
   return NULL;
@@ -86,13 +89,16 @@ int main(int argc, char** argv) {
     rep_nums.push_back(i);
   }
 
+  int rep_temp = 0; // represents the solution we're attempting
   pthread_t threads[NUM_THREADS];
   for (int t = 0; t < NUM_THREADS; t++) {
     poss_soln_t ps = new poss_soln;
     ps->expr = expr;
     ps->rep_temp = rep_temp;
-    pthread_create(&threads[t], NULL, worker_single_request, (void*)ps);
+    pthread_create(&threads[t], NULL, attempt_single_solution, (void*)ps);
+    rep_temp++;
   }
+  assert(rep_temp == pow(2, num_vars));
 
   /*for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
     std::vector<int> sat_vals;
