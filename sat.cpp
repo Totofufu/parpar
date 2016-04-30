@@ -6,10 +6,17 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "lib/work_queue.h"
 #include "lib/parse.cpp"
 #include "sat.h"
 
 #define NUM_THREADS 60
+#define UNUSED(x) (void)(x)
+
+WorkQueue<int>* wqueue = new WorkQueue<int>();
+bool done = false; // set to true once we attempt all possible solns or find a satisfiable soln
+std::vector <std::vector<int> > expr;
+int num_vars;
 
 void print_solution(std::vector<int> sat_vals) {
   int i = 1;
@@ -47,14 +54,10 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
 
 void* attempt_single_solution(void* args) {
 
+  UNUSED(args);
+
   while (!done) {
-    if (args == NULL) {
-      printf("args is NULL\n");
-      assert(false);
-    }
-    poss_soln_t s = (poss_soln_t)args;
-    int rep_temp = s->rep_temp;
-    std::vector <std::vector<int> > expr = s->expr;
+    int rep_temp = wqueue->get_work();
 
     std::vector<int> sat_vals;
 
@@ -69,7 +72,7 @@ void* attempt_single_solution(void* args) {
     if (is_satisfiable(expr, sat_vals)) {
       printf("Solution found!\n");
       print_solution(sat_vals);
-      delete num_vars_ptr;
+      done = true;
     }
   }
 
@@ -80,8 +83,8 @@ void* attempt_single_solution(void* args) {
 // input form of SAT expression: 2,1 -2,3,-4
 int main(int argc, char** argv) {
   int* num_vars_ptr = new int;
-  std::vector <std::vector<int> > expr = parse(argc, argv, num_vars_ptr); // assume this is initialized
-  int num_vars = *num_vars_ptr;
+  expr = parse(argc, argv, num_vars_ptr); // assume this is initialized
+  num_vars = *num_vars_ptr; // set global num_vars here
 
   // contains values from 0 to 2^num_vars that represent all possible solutions
   std::vector<int> rep_nums;
@@ -89,16 +92,16 @@ int main(int argc, char** argv) {
     rep_nums.push_back(i);
   }
 
-  int rep_temp = 0; // represents the solution we're attempting
+  // rep_temp represents the solution we're attempting
+  for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
+    wqueue->put_work(rep_temp);
+  }
+
   pthread_t threads[NUM_THREADS];
   for (int t = 0; t < NUM_THREADS; t++) {
-    poss_soln_t ps = new poss_soln;
-    ps->expr = expr;
-    ps->rep_temp = rep_temp;
-    pthread_create(&threads[t], NULL, attempt_single_solution, (void*)ps);
-    rep_temp++;
+    pthread_create(&threads[t], NULL, attempt_single_solution, NULL);
+    pthread_detach(threads[t]);
   }
-  assert(rep_temp == pow(2, num_vars));
 
   /*for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
     std::vector<int> sat_vals;

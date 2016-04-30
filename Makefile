@@ -2,7 +2,7 @@ CC=g++
 
 default:
 	rm -rf sat
-	$(CC) -o sat sat.cpp
+	$(CC) -pthread -o sat sat.cpp
 
 gen:
 	rm -rf gen
@@ -14,4 +14,4 @@ clean:
 all:
 	rm -rf gen sat
 	$(CC) -o gen gen.cpp
-	$(CC) -o sat sat.cpp
+	$(CC) -pthread -o sat sat.cpp
