@@ -4,19 +4,8 @@
 #include <cassert>
 #include <vector>
 #include <string.h>
-#include <pthread.h>
 
-#include "lib/work_queue.h"
 #include "lib/parse.cpp"
-#include "sat.h"
-
-#define NUM_THREADS 60
-#define UNUSED(x) (void)(x)
-
-WorkQueue<int>* wqueue = new WorkQueue<int>();
-bool done = false; // set to true once we attempt all possible solns or find a satisfiable soln
-std::vector <std::vector<int> > expr;
-int num_vars;
 
 void print_solution(std::vector<int> sat_vals) {
   int i = 1;
@@ -52,64 +41,24 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
   return satis;
 }
 
-void* attempt_single_solution(void* args) {
-
-  UNUSED(args);
-
-  while (!done) {
-    int rep_temp = wqueue->get_work();
-
-    std::vector<int> sat_vals;
-
-    // fill in the SAT expr with a brute force attempt
-    for (int i = 0; i < num_vars; i++) {
-      int bit = rep_temp & 0x1;
-      sat_vals.push_back(bit);
-      rep_temp >>= 1;
-    }
-
-    // check to see if the current SAT expression is satisfiable
-    if (is_satisfiable(expr, sat_vals)) {
-      printf("Solution found!\n");
-      print_solution(sat_vals);
-      done = true;
-    }
-  }
-
-  return NULL;
-
-}
-
 // input form of SAT expression: 2,1 -2,3,-4
 int main(int argc, char** argv) {
   int* num_vars_ptr = new int;
-  expr = parse(argc, argv, num_vars_ptr); // assume this is initialized
-  num_vars = *num_vars_ptr; // set global num_vars here
+  std::vector <std::vector<int> > expr = parse(argc, argv, num_vars_ptr); // assume this is initialized
+  int num_vars = *num_vars_ptr;
 
-  // contains values from 0 to 2^num_vars that represent all possible solutions
-  std::vector<int> rep_nums;
-  for (int i = 0; i < pow(2, num_vars); i++) {
-    rep_nums.push_back(i);
+  // contains current clause true/false values
+  std::vector<int> sat_vals;
+  for (int i = 0; i < num_vars; i++) {
+    sat_vals.push_back(-1);
   }
 
-  // rep_temp represents the solution we're attempting
-  for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
-    wqueue->put_work(rep_temp);
-  }
-
-  pthread_t threads[NUM_THREADS];
-  for (int t = 0; t < NUM_THREADS; t++) {
-    pthread_create(&threads[t], NULL, attempt_single_solution, NULL);
-    pthread_detach(threads[t]);
-  }
-
-  /*for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
-    std::vector<int> sat_vals;
-
+  for (int rep_num = 0; rep_num < pow(2, num_vars); rep_num++) {
+    int rep_temp = rep_num;
     // fill in the SAT expr with a brute force attempt
     for (int i = 0; i < num_vars; i++) {
       int bit = rep_temp & 0x1;
-      sat_vals.push_back(bit);
+      sat_vals.at(i) = bit;
       rep_temp >>= 1;
     }
 
@@ -120,7 +69,7 @@ int main(int argc, char** argv) {
       delete num_vars_ptr;
       return 0;
     }
-  }*/
+  }
 
   printf("No solution found.\n");
   delete num_vars_ptr;
