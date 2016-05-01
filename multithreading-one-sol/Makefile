@@ -1,4 +1,4 @@
-CC=g++
+CC=g++ -std=c++11
 
 default:
 	rm -rf sat
