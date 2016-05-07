@@ -27,6 +27,7 @@ static struct Global_state {
 
 void print_solution(std::vector<int> sat_vals) {
   gstate.print_sol_mutex.lock();
+  printf("Solution found!\n");
   int i = 1;
   for (std::vector<int>::iterator it = sat_vals.begin(); it != sat_vals.end(); ++it) {
     int exp = *it;
@@ -49,6 +50,14 @@ bool is_satisfiable(std::vector<int> sat_vals) {
     for (std::vector<int>::iterator inner = outer->begin(); inner != outer->end(); ++inner) {
       // find index into sat_vals by taking abs value and then subtracting 1 to account for array zero-indexing
       int exp_index = abs(*inner)-1;
+      if (!(0 <= exp_index)) {
+        printf("exp_index: %d\n", exp_index);
+        assert(0 <= exp_index);
+      }
+      if (!(exp_index < gstate.num_vars)) {
+        printf("exp_index: %d\n", exp_index);
+        assert(exp_index < gstate.num_vars);
+      }
       bool exp_value = sat_vals.at(exp_index);
       if (*inner > 0)
         clause |= exp_value;
@@ -79,7 +88,6 @@ void* attempt_single_solution(void* args) {
 
     // check to see if the current SAT expression is satisfiable
     if (is_satisfiable(sat_vals)) {
-      printf("Solution found!\n");
       print_solution(sat_vals);
       gstate.done = true;
       gstate.success = true;
