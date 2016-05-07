@@ -84,7 +84,7 @@ std::string gen_sat(int num_vars, int num_clauses, int max_clause_len) {
 // NUM_CLAUSES MUST BE AT LEAST NUM_VARS
 int main(int argc, char** argv) {
   // num_vars, num_clauses, max_clause_length
-  std::string result = gen_sat(100, 1000, 5);
+  std::string result = gen_sat(10, 1000, 5);
   std::cout << result << "\n";
   return 1;
 }

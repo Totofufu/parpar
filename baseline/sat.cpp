@@ -31,17 +31,12 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
       // find index into sat_vals by taking abs value and then subtracting 1 to account for array zero-indexing
       int exp_index = abs(*inner)-1;
 
-      printf("i tried\n");
-      std::cout << *inner;
-      printf("\n");
-
       bool exp_value = sat_vals.at(exp_index);
       if (*inner > 0)
         clause |= exp_value;
       else
         clause |= !exp_value; // account for literals that are negations of a variable
     }
-    printf("i got here\n");
     satis &= clause;
     if (!satis) return false;
   }
@@ -52,8 +47,6 @@ bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_v
 int main(int argc, char** argv) {
   int* num_vars_ptr = new int;
   std::vector <std::vector<int> > expr = parse(argc, argv, num_vars_ptr); // assume this is initialized
-  std::cout << expr.at(2).at(0) << "\n";
-  std::cout << "cool beans\n";
   int num_vars = *num_vars_ptr;
 
   printf("\n");
@@ -65,6 +58,7 @@ int main(int argc, char** argv) {
 
   for (int rep_num = 0; rep_num < pow(2, num_vars); rep_num++) {
     int rep_temp = rep_num;
+
     // fill in the SAT expr with a brute force attempt
     for (int i = 0; i < num_vars; i++) {
       int bit = rep_temp & 0x1;

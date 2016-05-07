@@ -26,6 +26,7 @@ static struct Global_state {
 
 
 void print_solution(std::vector<int> sat_vals) {
+  gstate.print_sol_mutex.lock();
   int i = 1;
   for (std::vector<int>::iterator it = sat_vals.begin(); it != sat_vals.end(); ++it) {
     int exp = *it;
@@ -38,6 +39,7 @@ void print_solution(std::vector<int> sat_vals) {
     i++;
   }
   printf("\n");
+  gstate.print_sol_mutex.unlock();
 }
 
 bool is_satisfiable(std::vector<int> sat_vals) {
@@ -77,10 +79,8 @@ void* attempt_single_solution(void* args) {
 
     // check to see if the current SAT expression is satisfiable
     if (is_satisfiable(sat_vals)) {
-      gstate.print_sol_mutex.lock();
       printf("Solution found!\n");
       print_solution(sat_vals);
-      gstate.print_sol_mutex.unlock();
       gstate.done = true;
       gstate.success = true;
     }
@@ -116,6 +116,8 @@ int main(int argc, char** argv) {
     pthread_create(&threads[t], NULL, attempt_single_solution, NULL);
     pthread_detach(threads[t]);
   }
+
+
 
   /*for (int rep_temp = 0; rep_temp < pow(2, num_vars); rep_temp++) {
     std::vector<int> sat_vals;

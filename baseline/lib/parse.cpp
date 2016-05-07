@@ -35,8 +35,6 @@ std::vector< std::vector<int> > parse(int argc, char** argv, int* max_var) {
           *max_var = abs(new_var);
         }
 
-        printf("inserting: ");
-        std::cout << new_var << "\n";
         // Insert each variable into the subexpression.
         sub_expr.insert(sub_it, new_var);
         //std::cout << new_var << "\n";
