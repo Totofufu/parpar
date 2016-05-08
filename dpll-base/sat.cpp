@@ -7,6 +7,8 @@
 #include <string>
 #include <map>
 #include <set>
+#include <utility>
+#include <algorithm>
 
 #include "lib/parse.cpp"
 
@@ -25,61 +27,189 @@ void print_solution(std::vector<int> sat_vals) {
   printf("\n");
 }
 
-bool is_satisfiable(std::vector <std::vector<int> > expr, std::vector<int> sat_vals) {
-  bool satis = true;
-  for (std::vector<std::vector<int> >::iterator outer = expr.begin(); outer != expr.end(); ++outer) {
-    bool clause = false;
-    for (std::vector<int>::iterator inner = outer->begin(); inner != outer->end(); ++inner) {
-      // find index into sat_vals by taking abs value and then subtracting 1 to account for array zero-indexing
-      int exp_index = abs(*inner)-1;
-
-      bool exp_value = sat_vals.at(exp_index);
-      if (*inner > 0)
-        clause |= exp_value;
-      else
-        clause |= !exp_value; // account for literals that are negations of a variable
+// Prints out everything in the vars map.
+void debug_vars(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
+  for (std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = vars.begin(); it != vars.end(); ++it) {
+    std::cout << "\n\nVAR " << it->first << ": ";
+    for (std::set<int>::iterator pos=(it->second).first.begin(); pos != (it->second).first.end(); ++pos) {
+      std::cout << *pos << " ";
     }
-    satis &= clause;
-    if (!satis) return false;
+    std::cout << "\n\n~VAR " << it->first << ": ";
+    for (std::set<int>::iterator neg=(it->second).second.begin(); neg != (it->second).second.end(); ++neg) {
+      std::cout << *neg << " ";
+    }
   }
-  return satis;
+  std::cout << "\n\n";
+}
+
+// Clauses are empty when they are unsatisfied (all set to false).
+bool contains_empty(std::map<int, std::set<int> > clauses) {
+  for (std::map<int, std::set<int> >::iterator it=clauses.begin(); it != clauses.end(); ++it) {
+    std::set<int> clause = it->second;
+    if (clause.empty()) return true;
+  }
+  return false;
+}
+
+// Sets a given variable x to true by removing all clauses where x is a member,
+// and removes -x from clauses where -x is a member.
+// Also removes the variable entirely from consideration.
+void assign_truth(int var_id, std::map<int, std::set<int> >* clauses,
+    std::map<int, std::pair<std::set<int>, std::set<int> > >* vars) {
+
+  // Remove the variable from clauses first.
+  std::set<int> var_clauses = (*vars)[abs(var_id)].first;
+  std::set<int> opp_clauses = (*vars)[abs(var_id)].second;
+  if (var_id < 0) { // Assigning x to false is assigning -x to true.
+    var_clauses = (*vars)[abs(var_id)].second;
+    opp_clauses = (*vars)[abs(var_id)].first;
+  }
+  for (std::set<int>::iterator it = var_clauses.begin(); it != var_clauses.end(); ++it) {
+    // Remove the clauses where x is a member and update variable membership.
+    int clause_id = *it;
+    std::set<int> clause = (*clauses)[clause_id];
+    for (std::set<int>::iterator elem = clause.begin(); elem != clause.end(); ++elem) {
+      if ((*elem) > 0) (*vars)[abs(*elem)].first.erase (clause_id);
+      else (*vars)[abs(*elem)].second.erase (clause_id);
+    }
+    (*clauses).erase (clause_id);
+  }
+  for (std::set<int>::iterator it = opp_clauses.begin(); it != opp_clauses.end(); ++it) {
+    // Remove -x from clauses where it is a member.
+    int opp_var_id = -1 * var_id;
+    (*clauses)[*it].erase (opp_var_id);
+  }
+
+  // Remove the variable itself.
+  (*vars).erase (var_id);
+}
+
+// Searches for unit clauses, and sets those variables to true.
+void assign_unit_clauses(std::map<int, std::set<int> >* clauses,
+    std::map<int, std::pair<std::set<int>, std::set<int> > >* vars) {
+  for (std::map<int, std::set<int> >::iterator it = (*clauses).begin(); it != (*clauses).end(); ++it) {
+    std::set<int> clause = it->second;
+    if (clause.size() == 1) {
+      // Found a unit clause, set the variable to true.
+      for (std::set<int>::iterator elem = clause.begin(); elem != clause.end(); ++elem) {
+        assign_truth(*elem, clauses, vars);
+      }
+    }
+  }
+}
+
+// Searches for pure literals, and sets those variables to true.
+void assign_pure_literals(std::map<int, std::set<int> >* clauses,
+    std::map<int, std::pair<std::set<int>, std::set<int> > >* vars) {
+  for (std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = (*vars).begin(); it != (*vars).end(); ++it) {
+    int var_id = it->first;
+    std::set<int> pos_clauses = (it->second).first; // Clauses that contain x.
+    std::set<int> neg_clauses = (it->second).second; // Clauses that contain -x.
+    if (pos_clauses.size() == 0) {
+      int opp_var_id = var_id * -1;
+      assign_truth(opp_var_id, clauses, vars);
+    }
+    else if (neg_clauses.size() == 0) {
+      assign_truth(var_id, clauses, vars);
+    }
+  }
+}
+
+// Checks if the clauses are already all satisfiable.
+bool check_satisfied(std::map<int, std::set<int> > clauses) {
+  if (clauses.empty()) return true;
+  for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
+    bool has_pos = false;
+    std::set<int> clause = it->second;
+    for (std::set<int>::iterator elem = clause.begin(); elem != clause.end(); ++elem) {
+      if (*elem > 0) {
+        has_pos = true;
+        break;
+      }
+    }
+    if (!has_pos) return false;
+  }
+  return true;
+}
+
+// Randomly picks the next available variable to assign.
+int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
+  std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = vars.begin();
+  std::advance(it, rand() & vars.size());
+  return it->first;
+}
+
+// Implements the DPLL algorithm.
+bool dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
+  //printf("good\n");
+  if (check_satisfied(clauses)) return true;
+  //printf("ol\n");
+  if (contains_empty(clauses)) return false;
+  //printf("fashioned\n");
+  assign_unit_clauses(&clauses, &vars);
+  //printf("print\n");
+  assign_pure_literals(&clauses, &vars);
+
+  //printf("statements\n");
+  // Try setting a random variable to true.
+  int lit = choose_literal(vars);
+  std::map<int, std::set<int> > pos_clauses = clauses;
+  std::map<int, std::pair<std::set<int>, std::set<int> > > pos_vars = vars;
+  assign_truth(lit, &pos_clauses, &pos_vars);
+
+  //std::cout << "the number " << lit << " is lit\n";
+  // Try setting it to false.
+  int not_lit = -1 * lit; // lol
+  std::map<int, std::set<int> > neg_clauses = clauses;
+  std::map<int, std::pair<std::set<int>, std::set<int> > > neg_vars = vars;
+  assign_truth(not_lit, &neg_clauses, &neg_vars);
+
+  //std::cout << "this segfault is not lit.\n";
+
+  return (dpll(pos_clauses, pos_vars) || dpll(neg_clauses, neg_vars));
+}
+
+void scratch_maps(std::map<int, std::set<int> > clauses,
+    std::map<int, std::pair<std::set<int>, std::set<int> > > map) {
+  std::map<int, std::set<int> > new_clauses = clauses;
+  clauses.erase (1);
+
+  std::cout << "Original:\n";
+  for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
+    std::set<int> elems = it->second;
+    std::cout << "elems is size " << elems.size() << "\n";
+    for (std::set<int>::iterator elem = elems.begin(); elem != elems.end(); ++elem) {
+      std::cout << *elem << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n\n";
+  std::cout << "Copy:\n";
+  for (std::map<int, std::set<int> >::iterator it = new_clauses.begin(); it != new_clauses.end(); ++it) {
+    std::set<int> elems = it->second;
+    std::cout << "copy elems size " << elems.size() << "\n";
+    for (std::set<int>::iterator elem = elems.begin(); elem != elems.end(); ++elem) {
+      std::cout << *elem << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n\n";
+
+
 }
 
 // input form of SAT expression: 2,1 -2,3,-4
 int main(int argc, char** argv) {
-  int* num_vars_ptr = new int;
   std::map<int,std::set<int> > clauses;
-  std::map<int,std::set<int> > vars;
+  std::map<int,std::pair<std::set<int>, std::set<int> > > vars;
   parse(argc, argv, &clauses, &vars);
 
-  /*
-  printf("\n");
-  // contains current clause true/false values
-  std::vector<int> sat_vals;
-  for (int i = 0; i < num_vars; i++) {
-    sat_vals.push_back(-1);
-  }
+  //debug_vars(vars);
+  //scratch_maps(clauses, vars);
 
-  for (int rep_num = 0; rep_num < pow(2, num_vars); rep_num++) {
-    int rep_temp = rep_num;
+  if (dpll(clauses, vars)) printf("There's a solution here somewhere...\n");
+  else printf("No solution.\n");
 
-    // fill in the SAT expr with a brute force attempt
-    for (int i = 0; i < num_vars; i++) {
-      int bit = rep_temp & 0x1;
-      sat_vals.at(i) = bit;
-      rep_temp >>= 1;
-    }
 
-    // check to see if the current SAT expression is satisfiable
-    if (is_satisfiable(expr, sat_vals)) {
-      printf("Solution found!\n");
-      print_solution(sat_vals);
-      delete num_vars_ptr;
-      return 0;
-    }
-  }*/
-
-  printf("No solution found.\n");
-  delete num_vars_ptr;
   return 1;
 }
