@@ -9,22 +9,27 @@
 #include <set>
 #include <utility>
 #include <algorithm>
+#include <thread>
 
 #include "lib/parse.cpp"
 
+// Print out the solution (multi-threading compatible - need to fix for current rep though)
 void print_solution(std::vector<int> sat_vals) {
+  std::string str = "Solution found!\n";
   int i = 1;
   for (std::vector<int>::iterator it = sat_vals.begin(); it != sat_vals.end(); ++it) {
     int exp = *it;
-    printf("x%d = ", i);
-    if (exp == 1) printf("T");
-    else printf("F");
+    str.append("x" + std::to_string(i) + " = ");
+    if (exp == 1) str.append("T");
+    else str.append("F");
 
     // deal with trailing comma at the very end
-    if (i < sat_vals.size()) printf(", ");
+    if (i < sat_vals.size()) str.append(", ");
     i++;
   }
-  printf("\n");
+  gstate.print_sol_mutex.lock();
+  std::cout << str << std::endl;
+  gstate.print_sol_mutex.unlock();
 }
 
 // Prints out everything in the vars map.
@@ -81,7 +86,7 @@ void assign_truth(int var_id, std::map<int, std::set<int> >* clauses,
   }
 
   // Remove the variable itself.
-  (*vars).erase (var_id);
+  //(*vars).erase (var_id);
 }
 
 // Searches for unit clauses, and sets those variables to true.
