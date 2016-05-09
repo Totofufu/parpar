@@ -9,9 +9,57 @@
 #include <set>
 #include <utility>
 #include <algorithm>
-#include <thread>
 
 #include "lib/parse.cpp"
+
+
+// BEGIN DEBUGGERS //
+
+// Prints out everything in the vars map.
+void debug_vars(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
+  for (std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = vars.begin(); it != vars.end(); ++it) {
+    std::cout << "\n\nVAR " << it->first << ": ";
+    for (std::set<int>::iterator pos=(it->second).first.begin(); pos != (it->second).first.end(); ++pos) {
+      std::cout << *pos << " ";
+    }
+    std::cout << "\n\n~VAR " << it->first << ": ";
+    for (std::set<int>::iterator neg=(it->second).second.begin(); neg != (it->second).second.end(); ++neg) {
+      std::cout << *neg << " ";
+    }
+  }
+  std::cout << "\n\n";
+}
+
+void scratch_maps(std::map<int, std::set<int> > clauses,
+    std::map<int, std::pair<std::set<int>, std::set<int> > > map) {
+  std::map<int, std::set<int> > new_clauses = clauses;
+  clauses.erase (1);
+
+  std::cout << "Original:\n";
+  for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
+    std::set<int> elems = it->second;
+    std::cout << "elems is size " << elems.size() << "\n";
+    for (std::set<int>::iterator elem = elems.begin(); elem != elems.end(); ++elem) {
+      std::cout << *elem << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n\n";
+  std::cout << "Copy:\n";
+  for (std::map<int, std::set<int> >::iterator it = new_clauses.begin(); it != new_clauses.end(); ++it) {
+    std::set<int> elems = it->second;
+    std::cout << "copy elems size " << elems.size() << "\n";
+    for (std::set<int>::iterator elem = elems.begin(); elem != elems.end(); ++elem) {
+      std::cout << *elem << " ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n\n";
+}
+
+// END DEBUGGERS //
+
+
 
 // Print out the solution (multi-threading compatible - need to fix for current rep though)
 void print_solution(std::vector<int> sat_vals) {
@@ -27,24 +75,7 @@ void print_solution(std::vector<int> sat_vals) {
     if (i < sat_vals.size()) str.append(", ");
     i++;
   }
-  gstate.print_sol_mutex.lock();
   std::cout << str << std::endl;
-  gstate.print_sol_mutex.unlock();
-}
-
-// Prints out everything in the vars map.
-void debug_vars(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
-  for (std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = vars.begin(); it != vars.end(); ++it) {
-    std::cout << "\n\nVAR " << it->first << ": ";
-    for (std::set<int>::iterator pos=(it->second).first.begin(); pos != (it->second).first.end(); ++pos) {
-      std::cout << *pos << " ";
-    }
-    std::cout << "\n\n~VAR " << it->first << ": ";
-    for (std::set<int>::iterator neg=(it->second).second.begin(); neg != (it->second).second.end(); ++neg) {
-      std::cout << *neg << " ";
-    }
-  }
-  std::cout << "\n\n";
 }
 
 // Clauses are empty when they are unsatisfied (all set to false).
@@ -146,62 +177,26 @@ int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars
 
 // Implements the DPLL algorithm.
 bool dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
-  //printf("good\n");
   if (check_satisfied(clauses)) return true;
-  //printf("ol\n");
   if (contains_empty(clauses)) return false;
-  //printf("fashioned\n");
   assign_unit_clauses(&clauses, &vars);
-  //printf("print\n");
   assign_pure_literals(&clauses, &vars);
 
-  //printf("statements\n");
   // Try setting a random variable to true.
   int lit = choose_literal(vars);
   std::map<int, std::set<int> > pos_clauses = clauses;
   std::map<int, std::pair<std::set<int>, std::set<int> > > pos_vars = vars;
   assign_truth(lit, &pos_clauses, &pos_vars);
 
-  //std::cout << "the number " << lit << " is lit\n";
   // Try setting it to false.
   int not_lit = -1 * lit; // lol
   std::map<int, std::set<int> > neg_clauses = clauses;
   std::map<int, std::pair<std::set<int>, std::set<int> > > neg_vars = vars;
   assign_truth(not_lit, &neg_clauses, &neg_vars);
 
-  //std::cout << "this segfault is not lit.\n";
-
   return (dpll(pos_clauses, pos_vars) || dpll(neg_clauses, neg_vars));
 }
 
-void scratch_maps(std::map<int, std::set<int> > clauses,
-    std::map<int, std::pair<std::set<int>, std::set<int> > > map) {
-  std::map<int, std::set<int> > new_clauses = clauses;
-  clauses.erase (1);
-
-  std::cout << "Original:\n";
-  for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
-    std::set<int> elems = it->second;
-    std::cout << "elems is size " << elems.size() << "\n";
-    for (std::set<int>::iterator elem = elems.begin(); elem != elems.end(); ++elem) {
-      std::cout << *elem << " ";
-    }
-    std::cout << "\n";
-  }
-  std::cout << "\n\n";
-  std::cout << "Copy:\n";
-  for (std::map<int, std::set<int> >::iterator it = new_clauses.begin(); it != new_clauses.end(); ++it) {
-    std::set<int> elems = it->second;
-    std::cout << "copy elems size " << elems.size() << "\n";
-    for (std::set<int>::iterator elem = elems.begin(); elem != elems.end(); ++elem) {
-      std::cout << *elem << " ";
-    }
-    std::cout << "\n";
-  }
-  std::cout << "\n\n";
-
-
-}
 
 // input form of SAT expression: 2,1 -2,3,-4
 int main(int argc, char** argv) {

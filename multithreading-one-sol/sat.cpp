@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <thread>
 #include <mutex>
+#include <string>
 
 #include "lib/work_queue.h"
 #include "lib/parse.cpp"
@@ -26,19 +27,21 @@ static struct Global_state {
 
 
 void print_solution(std::vector<int> sat_vals) {
-  gstate.print_sol_mutex.lock();
+  std::string str = "Solution found!\n";
+
   int i = 1;
   for (std::vector<int>::iterator it = sat_vals.begin(); it != sat_vals.end(); ++it) {
     int exp = *it;
-    printf("x%d = ", i);
-    if (exp == 1) printf("T");
-    else printf("F");
+    str.append("x" + std::to_string(i) + " = ");
+    if (exp == 1) str.append("T");
+    else str.append("F");
 
     // deal with trailing comma at the very end
-    if (i < sat_vals.size()) printf(", ");
+    if (i < sat_vals.size()) str.append(", ");
     i++;
   }
-  printf("\n");
+  gstate.print_sol_mutex.lock();
+  std::cout << str << std::endl;
   gstate.print_sol_mutex.unlock();
 }
 
@@ -79,7 +82,6 @@ void* attempt_single_solution(void* args) {
 
     // check to see if the current SAT expression is satisfiable
     if (is_satisfiable(sat_vals)) {
-      printf("Solution found!\n");
       print_solution(sat_vals);
       gstate.done = true;
       gstate.success = true;
