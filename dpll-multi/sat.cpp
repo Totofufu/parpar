@@ -14,10 +14,16 @@
 
 #include "lib/parse.cpp"
 #include "lib/my_queue.h"
+#include "sat.h"
+
+#define NUM_THREADS 24
+#define UNUSED(x) (void)(x)
 
 static struct Global_state {
   MQueue<int>* success_queue;
+  MQueue<work_t>* wqueue;
   bool success;
+  bool done;
   std::mutex print_sol_mutex;
 } gstate;
 
@@ -186,12 +192,14 @@ int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars
   return it->first;
 }
 
+
 // Implements the DPLL algorithm.
 void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
   if (check_satisfied(clauses)) {
     // found a viable solution!
     gstate.success_queue->enq(1);
     gstate.success = true;
+    gstate.done = true;
     return;
   }
   if (contains_empty(clauses)) {
@@ -213,10 +221,37 @@ void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::se
   std::map<int, std::pair<std::set<int>, std::set<int> > > neg_vars = vars;
   assign_truth(not_lit, &neg_clauses, &neg_vars);
 
-  std::thread neg_thread(dpll, neg_clauses, neg_vars);
-  dpll(pos_clauses, pos_vars);
-  neg_thread.join();
+  work_t pos_work = new struct work;
+  pos_work->clauses = pos_clauses;
+  pos_work->vars = pos_vars;
+
+  work_t neg_work = new struct work;
+  neg_work->clauses = neg_clauses;
+  neg_work->vars = neg_vars;
+
+  gstate.wqueue->enq(pos_work);
+  gstate.wqueue->enq(neg_work);
+
+  /*std::thread neg_thread(dpll, neg_clauses, neg_vars);
+  dpll(pos_clauses, pos_azvars);
+  neg_thread.join();*/
   //return (dpll(pos_clauses, pos_vars) || dpll(neg_clauses, neg_vars));
+}
+
+// function that each thread calls and stays in
+void* attempt_single_solution(void* args) {
+
+  UNUSED(args);
+
+  while (!gstate.done) {
+    work_t work_struct = gstate.wqueue->deq();
+
+    dpll(work_struct->clauses, work_struct->vars);
+
+    // delete work_struct? no need for struct memory anymore
+  }
+
+  return NULL;
 }
 
 
@@ -230,9 +265,19 @@ int main(int argc, char** argv) {
   //scratch_maps(clauses, vars);
 
   gstate.success_queue = new MQueue<int>();
+  gstate.wqueue = new MQueue<work_t>();
   gstate.success = false;
+  gstate.done = false;
 
+  // start the initial call
   dpll(clauses, vars);
+
+  // start all the threads
+  pthread_t threads[NUM_THREADS];
+  for (int t = 0; t < NUM_THREADS; t++) {
+    pthread_create(&threads[t], NULL, attempt_single_solution, NULL);
+    pthread_detach(threads[t]);
+  }
 
   if (gstate.success) printf("There's a solution here somewhere...\n");
   else printf("No solution.\n");
