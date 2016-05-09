@@ -26,6 +26,10 @@ static struct Global_state {
   bool success;
   bool done;
   std::mutex print_sol_mutex;
+  std::vector<std::pair<int, int> > var_counts;
+  std::mutex var_counter_mutex;
+  std::map<std::map<int, std::set<int> >, bool> cached_clauses;
+  int var_counter;
 } gstate;
 
 
@@ -172,6 +176,7 @@ void assign_pure_literals(std::map<int, std::set<int> >* clauses,
 // Checks if the clauses are already all satisfiable.
 bool check_satisfied(std::map<int, std::set<int> > clauses) {
   if (clauses.empty()) return true;
+
   for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
     bool has_pos = false;
     std::set<int> clause = it->second;
@@ -199,23 +204,36 @@ bool check_satisfied(std::map<int, std::set<int> > clauses) {
 
 // Randomly picks the next available variable to assign.
 int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
-  std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = vars.begin();
-  std::advance(it, rand() & vars.size());
-  return it->first;
+  gstate.var_counter_mutex.lock();
+  int next_var = gstate.var_counts[gstate.var_counter].first;
+  gstate.var_counter++;
+  gstate.var_counter_mutex.unlock();
+  return next_var;
 }
 
 
 // Implements the DPLL algorithm.
 void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
+  /*
+  // Check the cache first.
+  std::map<std::map<int, std::set<int> >, bool>::iterator it = gstate.cached_clauses.find(clauses);
+  if (it != gstate.cached_clauses.end()) { // Found in cache!
+    gstate.success = it->second;
+    gstate.done = it->second;
+    return;
+  }*/
+
   if (check_satisfied(clauses)) {
     // found a viable solution!
     gstate.success_queue->enq(1);
     gstate.success = true;
     gstate.done = true;
+    gstate.cached_clauses[clauses] = true;
     return;
   }
   if (contains_empty(clauses)) {
     // no solution found here
+    gstate.cached_clauses[clauses] = false;
     return;
   }
   assign_unit_clauses(&clauses, &vars);
@@ -271,7 +289,7 @@ void* attempt_single_solution(void* args) {
 int main(int argc, char** argv) {
   std::map<int,std::set<int> > clauses;
   std::map<int,std::pair<std::set<int>, std::set<int> > > vars;
-  parse(argc, argv, &clauses, &vars);
+  parse(argc, argv, &clauses, &vars, &gstate.var_counts);
 
   //debug_vars(vars);
   //scratch_maps(clauses, vars);
@@ -280,6 +298,7 @@ int main(int argc, char** argv) {
   gstate.wstack = new MStack<work_t>();
   gstate.success = false;
   gstate.done = false;
+  gstate.var_counter = 0;
 
   // start the initial call
   dpll(clauses, vars);

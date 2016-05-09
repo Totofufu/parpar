@@ -13,7 +13,8 @@
 // Input: 1,2,3 4,-5 -6,7
 // Output: [[1,2,3],[4,-5],[-6,7]]
 void parse(int argc, char** argv, std::map<int,std::set<int> >* clauses,
-    std::map<int, std::pair <std::set<int>, std::set<int> > >* vars) {
+    std::map<int, std::pair <std::set<int>, std::set<int> > >* vars,
+    std::vector<std::pair <int, int> >* var_counts) {
   std::string line;
   std::ifstream input_expr (argv[1]);
 
@@ -58,6 +59,17 @@ void parse(int argc, char** argv, std::map<int,std::set<int> >* clauses,
 
     }
     input_expr.close();
+
+    for (std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = (*vars).begin(); it != (*vars).end(); ++it) {
+      int size = (it->second).second.size() + (it->second).first.size();
+      std::pair <int, int> elem (it->first, size);
+      (*var_counts).push_back(elem);
+    }
+
+    std::sort((*var_counts).begin(), (*var_counts).end(), [](const std::pair<int, int> &left, const std::pair<int,int> &right) {
+        return left.second < right.second;
+    });
+
   }
 }
 
