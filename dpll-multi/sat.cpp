@@ -14,14 +14,15 @@
 
 #include "lib/parse.cpp"
 #include "lib/my_queue.h"
+#include "lib/my_stack.h"
 #include "sat.h"
 
-#define NUM_THREADS 24
+#define NUM_THREADS 128
 #define UNUSED(x) (void)(x)
 
 static struct Global_state {
   MQueue<int>* success_queue;
-  MQueue<work_t>* wqueue;
+  MStack<work_t>* wstack;
   bool success;
   bool done;
   std::mutex print_sol_mutex;
@@ -182,6 +183,17 @@ bool check_satisfied(std::map<int, std::set<int> > clauses) {
     }
     if (!has_pos) return false;
   }
+  for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
+    bool has_neg = false;
+    std::set<int> clause = it->second;
+    for (std::set<int>::iterator elem = clause.begin(); elem != clause.end(); ++elem) {
+      if (*elem < 0) {
+        has_neg = true;
+        break;
+      }
+    }
+    if (!has_neg) return false;
+  }
   return true;
 }
 
@@ -229,8 +241,8 @@ void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::se
   neg_work->clauses = neg_clauses;
   neg_work->vars = neg_vars;
 
-  gstate.wqueue->enq(pos_work);
-  gstate.wqueue->enq(neg_work);
+  gstate.wstack->push(pos_work);
+  gstate.wstack->push(neg_work);
 
   /*std::thread neg_thread(dpll, neg_clauses, neg_vars);
   dpll(pos_clauses, pos_azvars);
@@ -244,7 +256,7 @@ void* attempt_single_solution(void* args) {
   UNUSED(args);
 
   while (!gstate.done) {
-    work_t work_struct = gstate.wqueue->deq();
+    work_t work_struct = gstate.wstack->pop();
 
     dpll(work_struct->clauses, work_struct->vars);
 
@@ -265,7 +277,7 @@ int main(int argc, char** argv) {
   //scratch_maps(clauses, vars);
 
   gstate.success_queue = new MQueue<int>();
-  gstate.wqueue = new MQueue<work_t>();
+  gstate.wstack = new MStack<work_t>();
   gstate.success = false;
   gstate.done = false;
 

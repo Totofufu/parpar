@@ -165,6 +165,17 @@ bool check_satisfied(std::map<int, std::set<int> > clauses) {
     }
     if (!has_pos) return false;
   }
+  for (std::map<int, std::set<int> >::iterator it = clauses.begin(); it != clauses.end(); ++it) {
+    bool has_neg = false;
+    std::set<int> clause = it->second;
+    for (std::set<int>::iterator elem = clause.begin(); elem != clause.end(); ++elem) {
+      if (*elem < 0) {
+        has_neg = true;
+        break;
+      }
+    }
+    if (!has_neg) return false;
+  }
   return true;
 }
 
