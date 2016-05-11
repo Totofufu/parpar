@@ -17,12 +17,13 @@
 #include "lib/my_stack.h"
 #include "sat.h"
 
-#define NUM_THREADS 128
+#define NUM_THREADS 24
 #define UNUSED(x) (void)(x)
 
 static struct Global_state {
   MQueue<int>* success_queue;
-  MStack<work_t>* wstack;
+  MQueue<work_t>* wqueue;
+  //MStack<work_t>* wstack;
   bool success;
   bool done;
   std::mutex print_sol_mutex;
@@ -202,7 +203,7 @@ bool check_satisfied(std::map<int, std::set<int> > clauses) {
   return true;
 }
 
-// Randomly picks the next available variable to assign.
+// Picks the next available variable to assign.
 int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
   gstate.var_counter_mutex.lock();
   int next_var = gstate.var_counts[gstate.var_counter].first;
@@ -210,7 +211,6 @@ int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars
   gstate.var_counter_mutex.unlock();
   return next_var;
 }
-
 
 // Implements the DPLL algorithm.
 void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
@@ -222,20 +222,30 @@ void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::se
     gstate.done = it->second;
     return;
   }*/
+  // Check the cache first.
+  std::map<std::map<int, std::set<int> >, bool>::iterator it = gstate.cached_clauses.find(clauses);
+  if (it != gstate.cached_clauses.end()) {
+    gstate.success = it->second;
+    gstate.done = it->second;
+    return;
+  }
 
   if (check_satisfied(clauses)) {
-    // found a viable solution!
+    // Found a viable solution!
     gstate.success_queue->enq(1);
     gstate.success = true;
     gstate.done = true;
+    // Cache the result.
     gstate.cached_clauses[clauses] = true;
     return;
   }
+
   if (contains_empty(clauses)) {
-    // no solution found here
+    // No solution found here.
     gstate.cached_clauses[clauses] = false;
     return;
   }
+
   assign_unit_clauses(&clauses, &vars);
   assign_pure_literals(&clauses, &vars);
 
@@ -259,8 +269,8 @@ void dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::se
   neg_work->clauses = neg_clauses;
   neg_work->vars = neg_vars;
 
-  gstate.wstack->push(pos_work);
-  gstate.wstack->push(neg_work);
+  gstate.wqueue->enq(pos_work);
+  gstate.wqueue->enq(neg_work);
 
   /*std::thread neg_thread(dpll, neg_clauses, neg_vars);
   dpll(pos_clauses, pos_azvars);
@@ -274,11 +284,11 @@ void* attempt_single_solution(void* args) {
   UNUSED(args);
 
   while (!gstate.done) {
-    work_t work_struct = gstate.wstack->pop();
+    work_t work_struct = gstate.wqueue->deq();
 
     dpll(work_struct->clauses, work_struct->vars);
 
-    // delete work_struct? no need for struct memory anymore
+    delete work_struct;
   }
 
   return NULL;
@@ -295,10 +305,15 @@ int main(int argc, char** argv) {
   //scratch_maps(clauses, vars);
 
   gstate.success_queue = new MQueue<int>();
-  gstate.wstack = new MStack<work_t>();
+  gstate.wqueue = new MQueue<work_t>();
+  //gstate.wstack = new MStack<work_t>();
   gstate.success = false;
   gstate.done = false;
   gstate.var_counter = 0;
+
+  for (int i = 0; i < vars.size(); i++) {
+  //  gstate.checked_vars.push_back(false);
+  }
 
   // start the initial call
   dpll(clauses, vars);

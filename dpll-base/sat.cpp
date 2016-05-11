@@ -12,6 +12,9 @@
 
 #include "lib/parse.cpp"
 
+static struct Global_state {
+  std::vector<bool> checked_vars;
+} gstate;
 
 // BEGIN DEBUGGERS //
 
@@ -179,12 +182,20 @@ bool check_satisfied(std::map<int, std::set<int> > clauses) {
   return true;
 }
 
-// Randomly picks the next available variable to assign.
+// Picks the next available variable to assign.
 int choose_literal(std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
-  std::map<int, std::pair<std::set<int>, std::set<int> > >::iterator it = vars.begin();
-  std::advance(it, rand() & vars.size());
-  return it->first;
+  int counter = 1;
+  for (std::vector<bool>::iterator it = gstate.checked_vars.begin(); it != gstate.checked_vars.end(); ++it) {
+    if (!(*it)) {
+      gstate.checked_vars[counter-1] = true;
+      return counter;
+    }
+    counter++;
+  }
+  assert(false);
+  return -1; // AHHH
 }
+
 
 // Implements the DPLL algorithm.
 bool dpll(std::map<int, std::set<int> > clauses, std::map<int, std::pair<std::set<int>, std::set<int> > > vars) {
@@ -217,6 +228,10 @@ int main(int argc, char** argv) {
 
   //debug_vars(vars);
   //scratch_maps(clauses, vars);
+
+  for (int i = 0; i < vars.size(); i++) {
+    gstate.checked_vars.push_back(false);
+  }
 
   if (dpll(clauses, vars)) printf("There's a solution here somewhere...\n");
   else printf("No solution.\n");
