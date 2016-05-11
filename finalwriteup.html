@@ -27,7 +27,7 @@
 
 <h2>Summary</h2>
 
-<p>We implemented a parallel SAT solver on the Andrew Unix machines capable of accepting any number of variables, clauses, and clause length. Our parallel implementation proved to be faster than our serial version, and we also created a random SAT expression generator to test large inputs quickly.</p>
+<p>We implemented a parallel SAT solver on the Andrew Unix machines capable of accepting any number of variables, clauses, and clause length. Our parallel implementation proved to be faster than our serial version, and we also created a random SAT expression generator to test large inputs quickly. We ultimately achieved a 4-5x speedup on our largest graph containing 100,000 variables and 100,000 clauses with a maximum clause length of 10,000.</p>
 
 <h2>Background</h2>
 
@@ -61,7 +61,11 @@
 
 <h2>Results</h2>
 
-<p>We display the results of our baseline implementation on our largest graphs, comparing them against the time it took against our multi-threaded implementation using caching and our multi-threaded implementation using sorting frequencies.</p>
+<p>We display the results of our DPLL sequential, baseline implementation on our largest graphs, comparing them against the time it took against our DPLL multi-threaded implementations. We decided to omit the brute force baseline implementation because it would've taken much, much longer (on the scale of hours) to finish running against our largest graphs.</p>
+
+<p>We created a random SAT expression generator that takes in a variable number of variables, clauses, and max clause length. The first graph below is run on a randomly generated file containing 10,000 variables and 10,000 clauses with a max clause length of 1,000. The second graph below is run on a randomly generated file containing 100,000 variables and 100,000 clauses with a max clause length of 10,000. The second file is clearly much larger than the first file. The "Base" times below are for our sequential DPLL algorithm, the "Multi-Caching" uses multi-threading and caching, and the "Multi-Sorting" uses multi-threading with sorting frequencies.</p>
+
+<p>As you can see below, the multi-threaded implementations are only a few seconds faster than the DPLL implementation for the first graph, but on the second graph, the multi-threaded implementations achieve a 4-5x speedup. Because the second graph describes a much larger file (112 MB!), we believe that the effects of our multithreaded implementation scale better over a larger problem set and result in a larger speedup.</p>
 
 <img src="pics/results1.png"><br><br>
 <img src="pics/results2.png"><br>
